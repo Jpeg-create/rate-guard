@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "rateguard"
+version = "0.1.0"
+description = "Distributed Redis rate limiter for Python APIs"
+readme = "README.md"
+requires-python = ">=3.8"
+
+dependencies = [
+    "upstash-redis",
+    "fastapi"
+]
+
+authors = [
+  {name = "JPEG"}
+]
+
+[tool.setuptools.packages.find]
+where = ["."]
