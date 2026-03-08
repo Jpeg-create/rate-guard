@@ -3,20 +3,35 @@ requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "rateguard"
+name = "rate-guardian"
 version = "0.1.0"
-description = "Distributed Redis rate limiter for Python APIs"
+description = "Distributed Redis rate limiter for Python APIs using sliding window algorithm"
 readme = "README.md"
 requires-python = ">=3.8"
+keywords = ["rate-limit", "fastapi", "redis", "api", "distributed", "sliding-window"]
+
+authors = [
+  {name = "JPEG"}
+]
+
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: OS Independent",
+  "Framework :: FastAPI",
+  "Topic :: Internet :: WWW/HTTP",
+  "Topic :: Software Development :: Libraries :: Python Modules"
+]
 
 dependencies = [
     "upstash-redis",
     "fastapi"
 ]
 
-authors = [
-  {name = "JPEG"}
-]
+[project.urls]
+Homepage = "https://github.com/Jpeg-create/rate-guard"
+Repository = "https://github.com/Jpeg-create/rate-guard"
+Issues = "https://github.com/Jpeg-create/rate-guard/issues"
 
 [tool.setuptools.packages.find]
 where = ["."]
