@@ -7,7 +7,7 @@ class RateGuard:
     def __init__(self, redis_url: str, redis_token: str):
         self.redis = Redis(url=redis_url, token=redis_token)
 
-    def is_allowed(self, key: str, limit: int, window: int) -> tuple[bool, dict]:
+    def is_allowed(self, key: str, limit: int, window: int):
         now = int(time.time() * 1000)
         window_ms = window * 1000
         oldest = now - window_ms
