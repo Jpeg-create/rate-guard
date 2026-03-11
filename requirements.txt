@@ -1,0 +1,11 @@
+# Core runtime
+redis>=5.0.0
+fastapi
+starlette
+
+# Legacy sync support (RateGuardSync only)
+# upstash-redis  # uncomment if you use RateGuardSync, or: pip install rate-guardian[sync]
+
+# Dev / testing
+pytest>=7.0
+pytest-asyncio>=0.23

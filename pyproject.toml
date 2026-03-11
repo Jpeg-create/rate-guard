@@ -1,0 +1,52 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "rate-guardian"
+version = "0.2.0"
+description = "Async sliding window rate limiter for Python APIs — Redis-backed, FastAPI-ready"
+readme = "README.md"
+requires-python = ">=3.8"
+keywords = ["rate-limit", "fastapi", "redis", "async", "sliding-window", "distributed"]
+
+authors = [
+  {name = "JPEG"}
+]
+
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: OS Independent",
+  "Framework :: FastAPI",
+  "Topic :: Internet :: WWW/HTTP",
+  "Topic :: Software Development :: Libraries :: Python Modules"
+]
+
+# Core dependencies — upstash-redis is NOT listed here.
+# It is only needed for the legacy RateGuardSync class (v1 compat).
+dependencies = [
+    "redis>=5.0.0",
+    "fastapi",
+    "starlette",
+]
+
+[project.optional-dependencies]
+# pip install rate-guardian[sync]  — adds legacy Upstash HTTP client support
+sync = ["upstash-redis"]
+dev = [
+    "pytest>=7.0",
+    "pytest-asyncio>=0.23",
+]
+
+[project.urls]
+Homepage = "https://github.com/Jpeg-create/rate-guardian"
+Repository = "https://github.com/Jpeg-create/rate-guardian"
+Issues = "https://github.com/Jpeg-create/rate_-uardian/issues"
+
+[tool.setuptools.packages.find]
+where = ["."]
+
+[tool.pytest.ini_options]
+asyncio_default_fixture_loop_scope = "function"
+asyncio_mode = "auto"
