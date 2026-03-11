@@ -1,18 +1,18 @@
 # RateGuardian v2
 
-Async sliding window rate limiter for Python APIs. Redis-backed, FastAPI-ready.
+A sliding window rate limiter for Python APIs. Built on Redis, works great with FastAPI.
 
-## What changed in v2
+## What's new in v2
 
-v1 used the Upstash HTTP client which is synchronous — in async apps you had to wrap every call in `run_in_executor` to avoid blocking the event loop. v2 is fully async and accepts your existing `redis.asyncio` client so there's no second connection or thread overhead.
+v1 was built on the Upstash HTTP client, which is synchronous. Every call in an async app had to be wrapped in `run_in_executor` to avoid blocking. v2 drops that entirely and works directly with `redis.asyncio`, so there's no extra thread overhead or second connection to manage.
 
-v1 is kept as `RateGuardianSync` for backward compatibility (requires `pip install rate-guardian[sync]`).
+v2 also ships with a few bug fixes:
 
-### v2.0 also fixes
+- The old pipeline was non-transactional, so under concurrent load two requests could read the same count and both get through. v2 uses a Lua script that runs atomically on the Redis server, so that can't happen.
+- The old pipeline always wrote to Redis even when a request was blocked. Blocked requests no longer write anything.
+- `X-RateLimit-Reset` now returns a Unix timestamp instead of the raw window duration.
 
-- **Race condition** — the old pipeline was non-transactional. Under concurrent load, multiple requests could read the same count and both slip through. v2 uses an atomic Lua script: evict, count, and conditionally add all happen server-side in a single round-trip.
-- **Blocked requests polluting Redis** — the old pipeline always called `ZADD` even when the request was rejected. Blocked requests now write nothing to Redis.
-- **`X-RateLimit-Reset`** — now returns a Unix epoch timestamp (when the window expires), not the raw window duration. `Retry-After` is still the number of seconds to wait.
+v1 is still available as `RateGuardianSync` if you need it.
 
 ## Install
 
@@ -20,7 +20,7 @@ v1 is kept as `RateGuardianSync` for backward compatibility (requires `pip insta
 pip install rate-guardian
 ```
 
-## Usage
+## Basic usage
 
 ```python
 import redis.asyncio as aioredis
@@ -32,25 +32,25 @@ limiter = RateGuardian(redis=client, prefix="myapp")
 # returns (allowed, headers)
 allowed, headers = await limiter.is_allowed("user:123", limit=10, window=60)
 
-# or raise on exceeded
-await limiter.check("user:123", limit=10, window=60)  # raises RateLimitExceeded
+# raises RateLimitExceeded if the limit is hit
+await limiter.check("user:123", limit=10, window=60)
 ```
 
-## FastAPI — three ways to use it
+## Using with FastAPI
 
-**1. Global middleware**
+**Global middleware** -- applies to every request, keyed by IP:
 ```python
 from rate_guardian import RateLimitMiddleware
 
-# Initialize at module level — the pool connects lazily, no event loop needed.
-# Do NOT initialize inside lifespan; add_middleware runs before lifespan starts.
+# Initialize at module level, not inside lifespan.
+# add_middleware runs at startup before lifespan begins.
 client = aioredis.from_url("redis://localhost:6379", decode_responses=True)
 limiter = RateGuardian(redis=client, prefix="myapp")
 
 app.add_middleware(RateLimitMiddleware, limiter=limiter, limit=100, window=60)
 ```
 
-**2. Per-route decorator**
+**Per-route decorator** -- each route gets its own bucket:
 ```python
 from rate_guardian import rate_limit
 
@@ -60,7 +60,7 @@ async def search(request: Request, q: str):
     ...
 ```
 
-**3. Manual check — full control over the key**
+**Manual check** -- useful when the key depends on request data:
 ```python
 from rate_guardian import RateLimitExceeded
 
@@ -74,46 +74,42 @@ async def shorten(tenant_id: int):
 
 ## How it works
 
-Uses Redis sorted sets with an atomic Lua script. Each allowed request is stored as a member with the current timestamp (ms) as its score. On every check, expired entries outside the window are removed server-side before counting. Blocked requests are never written.
+Each allowed request gets stored in a Redis sorted set with its timestamp as the score. On every check, entries older than the window get evicted, the remaining count is compared against the limit, and the request is either recorded or rejected. All of this happens in a single Lua script so it's atomic.
 
 ```lua
-ZREMRANGEBYSCORE key 0 (now - window_ms)  -- evict old entries
-count = ZCARD key                          -- count current requests
+ZREMRANGEBYSCORE key 0 (now - window_ms)  -- drop expired entries
+count = ZCARD key                          -- how many are left
 if count < limit then
-    ZADD key now request_id               -- record only if allowed
+    ZADD key now request_id               -- record it
     EXPIRE key window
     return {count, 1}                     -- allowed
 else
-    return {count, 0}                     -- blocked — nothing written
+    return {count, 0}                     -- blocked, nothing written
 end
 ```
 
-All operations run atomically on the Redis server — one round trip per check, no race conditions.
-
 ## Response headers
-
-Every call returns standard rate limit headers:
 
 | Header | Description |
 |--------|-------------|
 | `X-RateLimit-Limit` | Max requests allowed in the window |
-| `X-RateLimit-Remaining` | Requests left before hitting the limit |
-| `X-RateLimit-Reset` | Unix timestamp when the current window expires |
-| `Retry-After` | Seconds to wait before retrying (only on 429) |
+| `X-RateLimit-Remaining` | Requests left in the current window |
+| `X-RateLimit-Reset` | Unix timestamp of when the window resets |
+| `Retry-After` | Seconds to wait before retrying (429 only) |
 
 ## Running tests
 
 ```bash
-# with Docker — spins up Redis automatically
-docker compose up --abort-on-container-exit
-
-# locally — needs Redis on port 6379
+# locally, with Redis on port 6379
 pytest tests/ -v
+
+# with Docker
+docker compose up --abort-on-container-exit
 ```
 
-## v1 (sync) — backward compatibility
+## v1 compatibility
 
-Requires the optional `sync` extra (Upstash HTTP client):
+If you need the old synchronous Upstash-based limiter:
 
 ```bash
 pip install rate-guardian[sync]
