@@ -1,5 +1,10 @@
 # RateGuardian v2
 
+![PyPI](https://img.shields.io/pypi/v/rate-guardian)
+![Python](https://img.shields.io/pypi/pyversions/rate-guardian)
+![License](https://img.shields.io/pypi/l/rate-guardian)
+![Tests](https://img.shields.io/badge/tests-11%20passed-brightgreen)
+
 A sliding window rate limiter for Python APIs. Built on Redis, works great with FastAPI.
 
 ## What's new in v2
@@ -121,3 +126,7 @@ from rate_guardian import RateGuardianSync
 limiter = RateGuardianSync(redis_url="...", redis_token="...", prefix="myapp")
 allowed, headers = limiter.is_allowed("user:123", limit=10, window=60)
 ```
+
+## License
+
+MIT
